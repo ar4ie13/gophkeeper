@@ -1,0 +1,13 @@
+BEGIN TRANSACTION;
+
+DROP TABLE users;
+
+DROP TABLE text;
+
+DROP TABLE credential;
+
+DROP TABLE card;
+
+DROP TABLE file;
+
+COMMIT;

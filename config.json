@@ -1,0 +1,14 @@
+{
+  "server_conf": {
+    "server_addr": "localhost:8080",
+    "tls_cert_path": "server-cert.pem",
+    "tls_key_path": "server-key.pem"
+  },
+  "log_conf": {
+    "level": "debug"
+  },
+  "auth_conf": {
+    "token_expiration": 24,
+    "password_length": 10
+  }
+}
