@@ -97,7 +97,7 @@ func TestRegister_Conflict(t *testing.T) {
 
 	err := newTestClient(t, srv).Register("user", "pass")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "user already exists")
+	assert.Contains(t, err.Error(), "resource already exists")
 }
 
 func TestRegister_Unauthorized(t *testing.T) {
@@ -108,7 +108,7 @@ func TestRegister_Unauthorized(t *testing.T) {
 
 	err := newTestClient(t, srv).Register("user", "pass")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid login or password")
+	assert.Contains(t, err.Error(), "not authenticated")
 }
 
 func TestRegister_Forbidden(t *testing.T) {
@@ -119,7 +119,7 @@ func TestRegister_Forbidden(t *testing.T) {
 
 	err := newTestClient(t, srv).Register("user", "pass")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid login or password")
+	assert.Contains(t, err.Error(), "not authenticated")
 }
 
 func TestRegister_ServerError(t *testing.T) {
@@ -131,14 +131,14 @@ func TestRegister_ServerError(t *testing.T) {
 
 	err := newTestClient(t, srv).Register("user", "pass")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "auth failed (500)")
+	assert.Contains(t, err.Error(), "unexpected status 500")
 }
 
 func TestRegister_NetworkError(t *testing.T) {
 	c, _ := NewClient(config.Config{ServerURL: "http://127.0.0.1:1"})
 	err := c.Register("user", "pass")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "auth request")
+	assert.Contains(t, err.Error(), "/api/user/register")
 }
 
 // ---------- Login ----------
@@ -162,7 +162,7 @@ func TestLogin_InvalidCredentials(t *testing.T) {
 
 	err := newTestClient(t, srv).Login("user", "wrong")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid login or password")
+	assert.Contains(t, err.Error(), "not authenticated")
 }
 
 // ---------- Ping ----------
@@ -226,7 +226,7 @@ func TestStoreText_ServerError(t *testing.T) {
 
 	err := newTestClient(t, srv).StoreText(models.TextSecret{Name: "note"})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "store text failed (500)")
+	assert.Contains(t, err.Error(), "unexpected status 500")
 }
 
 // ---------- UpdateText ----------
@@ -263,7 +263,7 @@ func TestUpdateText_ServerError(t *testing.T) {
 
 	err := newTestClient(t, srv).UpdateText(models.TextSecret{Name: "note"})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "update text failed (400)")
+	assert.Contains(t, err.Error(), "unexpected status 400")
 }
 
 // ---------- GetText ----------
@@ -313,7 +313,7 @@ func TestGetText_ServerError(t *testing.T) {
 
 	_, err := newTestClient(t, srv).GetText("note")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "get text failed (500)")
+	assert.Contains(t, err.Error(), "unexpected status 500")
 }
 
 func TestGetText_InvalidJSON(t *testing.T) {
@@ -325,7 +325,7 @@ func TestGetText_InvalidJSON(t *testing.T) {
 
 	_, err := newTestClient(t, srv).GetText("note")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "decode text secret")
+	assert.Contains(t, err.Error(), "decode /api/user/text/get")
 }
 
 // ---------- StoreCredential ----------
@@ -361,7 +361,7 @@ func TestStoreCredential_ServerError(t *testing.T) {
 
 	err := newTestClient(t, srv).StoreCredential(models.CredentialSecret{Name: "gh"})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "store credential failed (500)")
+	assert.Contains(t, err.Error(), "unexpected status 500")
 }
 
 // ---------- GetCredential ----------
@@ -400,7 +400,7 @@ func TestGetCredential_InvalidJSON(t *testing.T) {
 
 	_, err := newTestClient(t, srv).GetCredential("gh")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "decode credential")
+	assert.Contains(t, err.Error(), "decode /api/user/credential/get")
 }
 
 // ---------- UpdateCredential ----------
@@ -437,7 +437,7 @@ func TestUpdateCredential_ServerError(t *testing.T) {
 
 	err := newTestClient(t, srv).UpdateCredential(models.CredentialSecret{Name: "gh"})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "update credential failed (400)")
+	assert.Contains(t, err.Error(), "unexpected status 400")
 }
 
 // ---------- StoreCard ----------
@@ -473,7 +473,7 @@ func TestStoreCard_ServerError(t *testing.T) {
 
 	err := newTestClient(t, srv).StoreCard(models.CardSecret{Name: "visa"})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "store card failed (500)")
+	assert.Contains(t, err.Error(), "unexpected status 500")
 }
 
 // ---------- GetCard ----------
@@ -523,7 +523,7 @@ func TestGetCard_InvalidJSON(t *testing.T) {
 
 	_, err := newTestClient(t, srv).GetCard("visa")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "decode card")
+	assert.Contains(t, err.Error(), "decode /api/user/card/get")
 }
 
 // ---------- UpdateCard ----------
@@ -560,7 +560,7 @@ func TestUpdateCard_ServerError(t *testing.T) {
 
 	err := newTestClient(t, srv).UpdateCard(models.CardSecret{Name: "visa"})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "update card failed (400)")
+	assert.Contains(t, err.Error(), "unexpected status 400")
 }
 
 // ---------- StoreFile ----------
@@ -626,7 +626,7 @@ func TestStoreFile_ServerError(t *testing.T) {
 
 	err := newTestClient(t, srv).StoreFile(models.FileSecret{Name: "f", Path: tmpFile})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "store file failed (500)")
+	assert.Contains(t, err.Error(), "unexpected status 500")
 }
 
 // ---------- GetFile ----------
@@ -754,7 +754,7 @@ func TestListTexts_Success(t *testing.T) {
 
 	got, err := newTestClient(t, srv).ListTexts()
 	require.NoError(t, err)
-	assert.Equal(t, want, got)
+	assert.Equal(t, want, *got)
 }
 
 func TestListTexts_ServerError(t *testing.T) {
@@ -766,7 +766,7 @@ func TestListTexts_ServerError(t *testing.T) {
 
 	_, err := newTestClient(t, srv).ListTexts()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "list texts failed (500)")
+	assert.Contains(t, err.Error(), "unexpected status 500")
 }
 
 func TestListTexts_InvalidJSON(t *testing.T) {
@@ -778,7 +778,7 @@ func TestListTexts_InvalidJSON(t *testing.T) {
 
 	_, err := newTestClient(t, srv).ListTexts()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "decode text list")
+	assert.Contains(t, err.Error(), "decode /api/user/text/list")
 }
 
 // ---------- ListCredentials ----------
@@ -794,7 +794,7 @@ func TestListCredentials_Success(t *testing.T) {
 
 	got, err := newTestClient(t, srv).ListCredentials()
 	require.NoError(t, err)
-	assert.Equal(t, want, got)
+	assert.Equal(t, want, *got)
 }
 
 func TestListCredentials_ServerError(t *testing.T) {
@@ -806,7 +806,7 @@ func TestListCredentials_ServerError(t *testing.T) {
 
 	_, err := newTestClient(t, srv).ListCredentials()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "list credentials failed (500)")
+	assert.Contains(t, err.Error(), "unexpected status 500")
 }
 
 func TestListCredentials_InvalidJSON(t *testing.T) {
@@ -818,7 +818,7 @@ func TestListCredentials_InvalidJSON(t *testing.T) {
 
 	_, err := newTestClient(t, srv).ListCredentials()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "decode credential list")
+	assert.Contains(t, err.Error(), "decode /api/user/credential/list")
 }
 
 // ---------- ListCards ----------
@@ -834,7 +834,7 @@ func TestListCards_Success(t *testing.T) {
 
 	got, err := newTestClient(t, srv).ListCards()
 	require.NoError(t, err)
-	assert.Equal(t, want, got)
+	assert.Equal(t, want, *got)
 }
 
 func TestListCards_ServerError(t *testing.T) {
@@ -846,7 +846,7 @@ func TestListCards_ServerError(t *testing.T) {
 
 	_, err := newTestClient(t, srv).ListCards()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "list cards failed (500)")
+	assert.Contains(t, err.Error(), "unexpected status 500")
 }
 
 func TestListCards_InvalidJSON(t *testing.T) {
@@ -858,7 +858,7 @@ func TestListCards_InvalidJSON(t *testing.T) {
 
 	_, err := newTestClient(t, srv).ListCards()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "decode card list")
+	assert.Contains(t, err.Error(), "decode /api/user/card/list")
 }
 
 // ---------- ListFiles ----------
@@ -874,7 +874,7 @@ func TestListFiles_Success(t *testing.T) {
 
 	got, err := newTestClient(t, srv).ListFiles()
 	require.NoError(t, err)
-	assert.Equal(t, want, got)
+	assert.Equal(t, want, *got)
 }
 
 func TestListFiles_ServerError(t *testing.T) {
@@ -886,7 +886,7 @@ func TestListFiles_ServerError(t *testing.T) {
 
 	_, err := newTestClient(t, srv).ListFiles()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "list files failed (500)")
+	assert.Contains(t, err.Error(), "unexpected status 500")
 }
 
 func TestListFiles_InvalidJSON(t *testing.T) {
@@ -898,5 +898,5 @@ func TestListFiles_InvalidJSON(t *testing.T) {
 
 	_, err := newTestClient(t, srv).ListFiles()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "decode file list")
+	assert.Contains(t, err.Error(), "decode /api/user/file/list")
 }

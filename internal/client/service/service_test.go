@@ -62,7 +62,7 @@ func TestRegister_APIError(t *testing.T) {
 	defer srv.Close()
 	err := newTestService(t, srv).Register("user", "pass")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "user already exists")
+	assert.Contains(t, err.Error(), "resource already exists")
 }
 
 // ---------- Login ----------
@@ -96,7 +96,7 @@ func TestLogin_APIError(t *testing.T) {
 	defer srv.Close()
 	err := newTestService(t, srv).Login("user", "wrong")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid login or password")
+	assert.Contains(t, err.Error(), "not authenticated")
 }
 
 // ---------- Sync ----------
