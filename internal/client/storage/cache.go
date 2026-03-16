@@ -121,8 +121,8 @@ func (c *Cache) GetFile(name string) (models.FileSecret, bool) {
 
 // DeleteSecret retrieves a path to file secret from memory.
 func (c *Cache) DeleteSecret(name string, secretType string) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	switch secretType {
 	case "text":
 		delete(c.texts, name)

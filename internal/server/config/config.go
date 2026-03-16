@@ -53,8 +53,6 @@ func NewConfig() *Config {
 
 	c.loadEnv()
 
-	fmt.Println(c.PGConf.DatabaseDSN)
-
 	return c
 }
 

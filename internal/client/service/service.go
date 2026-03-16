@@ -72,7 +72,7 @@ func (s *Service) Sync() SyncResult {
 			return result
 		}
 	}
-	for _, item := range textList {
+	for _, item := range *textList {
 		t, err := s.api.GetText(item.Name)
 		if err != nil {
 			continue // skip individual failures
@@ -92,7 +92,7 @@ func (s *Service) Sync() SyncResult {
 			return result
 		}
 	}
-	for _, item := range credList {
+	for _, item := range *credList {
 		c, err := s.api.GetCredential(item.Name)
 		if err != nil {
 			continue
@@ -112,7 +112,7 @@ func (s *Service) Sync() SyncResult {
 			return result
 		}
 	}
-	for _, item := range cardList {
+	for _, item := range *cardList {
 		c, err := s.api.GetCard(item.Name)
 		if err != nil {
 			continue
@@ -132,7 +132,7 @@ func (s *Service) Sync() SyncResult {
 			return result
 		}
 	}
-	for _, item := range fileList {
+	for _, item := range *fileList {
 		c, err := s.api.GetFile(item.Name)
 		if err != nil {
 			continue

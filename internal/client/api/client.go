@@ -72,36 +72,6 @@ func (c *Client) Login(login, password string) error {
 	return c.doAuth("/api/user/login", login, password)
 }
 
-// doAuth is a helper that handles common authentication flow for register and login.
-func (c *Client) doAuth(path, login, password string) error {
-	body, err := json.Marshal(authRequest{Login: login, Password: password})
-	if err != nil {
-		return fmt.Errorf("marshal auth: %w", err)
-	}
-
-	resp, err := c.httpClient.Post(
-		c.baseURL+path,
-		"application/json",
-		bytes.NewReader(body),
-	)
-	if err != nil {
-		return fmt.Errorf("auth request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusConflict {
-		return fmt.Errorf("user already exists")
-	}
-	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		return fmt.Errorf("invalid login or password")
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		respBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("auth failed (%d): %s", resp.StatusCode, string(respBody))
-	}
-	return nil
-}
-
 // Ping checks whether the server is reachable.
 func (c *Client) Ping() error {
 	req, err := http.NewRequest(http.MethodGet, c.baseURL+"/api/user/ping", nil)
@@ -119,292 +89,66 @@ func (c *Client) Ping() error {
 
 // StoreText sends a text secret to the server.
 func (c *Client) StoreText(secret models.TextSecret) error {
-	body, err := json.Marshal(secret)
-	if err != nil {
-		return fmt.Errorf("marshal text secret: %w", err)
-	}
-
-	resp, err := c.httpClient.Post(
-		c.baseURL+"/api/user/text/store",
-		"application/json",
-		bytes.NewReader(body),
-	)
-	if err != nil {
-		return fmt.Errorf("store text: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusUnauthorized {
-		return fmt.Errorf("not authenticated — please log in again")
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		respBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("store text failed (%d): %s", resp.StatusCode, string(respBody))
-	}
-	return nil
+	return c.sendJSON(http.MethodPost, "/api/user/text/store", secret)
 }
 
 // UpdateText sends update to a text secret to the server.
 func (c *Client) UpdateText(secret models.TextSecret) error {
-	body, err := json.Marshal(secret)
-	if err != nil {
-		return fmt.Errorf("marshal text secret: %w", err)
-	}
-
-	req, err := http.NewRequest(http.MethodPatch, c.baseURL+"/api/user/text/patch", bytes.NewReader(body))
-	if err != nil {
-		return fmt.Errorf("create request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.httpClient.Do(req)
-
-	if err != nil {
-		return fmt.Errorf("update text: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusUnauthorized {
-		return fmt.Errorf("not authenticated — please log in again")
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		respBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("update text failed (%d): %s", resp.StatusCode, string(respBody))
-	}
-	return nil
+	return c.sendJSON(http.MethodPatch, "/api/user/text/patch", secret)
 }
 
 // GetText retrieves a text secret by name from the server.
 func (c *Client) GetText(name string) (*models.TextSecret, error) {
-	resp, err := c.httpClient.Get(c.baseURL + "/api/user/text/get/" + name)
-	if err != nil {
-		return nil, fmt.Errorf("get text: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, fmt.Errorf("not authenticated")
-	}
-	if resp.StatusCode == http.StatusNotFound {
-		return nil, fmt.Errorf("text secret %q not found", name)
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		respBody, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("get text failed (%d): %s", resp.StatusCode, string(respBody))
-	}
-
-	var secret models.TextSecret
-	if err := json.NewDecoder(resp.Body).Decode(&secret); err != nil {
-		return nil, fmt.Errorf("decode text secret: %w", err)
-	}
-	return &secret, nil
+	return fetchJSON[models.TextSecret](c, "/api/user/text/get/"+name)
 }
 
 // StoreCredential sends a credential secret to the server.
 func (c *Client) StoreCredential(secret models.CredentialSecret) error {
-	body, err := json.Marshal(secret)
-	if err != nil {
-		return fmt.Errorf("marshal credential: %w", err)
-	}
-
-	resp, err := c.httpClient.Post(
-		c.baseURL+"/api/user/credential/store",
-		"application/json",
-		bytes.NewReader(body),
-	)
-	if err != nil {
-		return fmt.Errorf("store credential: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusUnauthorized {
-		return fmt.Errorf("not authenticated — please log in again")
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		respBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("store credential failed (%d): %s", resp.StatusCode, string(respBody))
-	}
-	return nil
+	return c.sendJSON(http.MethodPost, "/api/user/credential/store", secret)
 }
 
 // GetCredential retrieves a credential secret by name from the server.
 func (c *Client) GetCredential(name string) (*models.CredentialSecret, error) {
-	resp, err := c.httpClient.Get(c.baseURL + "/api/user/credential/get/" + name)
-	if err != nil {
-		return nil, fmt.Errorf("get credential: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, fmt.Errorf("not authenticated")
-	}
-	if resp.StatusCode == http.StatusNotFound {
-		return nil, fmt.Errorf("credential %q not found", name)
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		respBody, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("get credential failed (%d): %s", resp.StatusCode, string(respBody))
-	}
-
-	var secret models.CredentialSecret
-	if err := json.NewDecoder(resp.Body).Decode(&secret); err != nil {
-		return nil, fmt.Errorf("decode credential: %w", err)
-	}
-	return &secret, nil
+	return fetchJSON[models.CredentialSecret](c, "/api/user/credential/get/"+name)
 }
 
 // UpdateCredential sends update to a credential secret to the server.
 func (c *Client) UpdateCredential(secret models.CredentialSecret) error {
-	body, err := json.Marshal(secret)
-	if err != nil {
-		return fmt.Errorf("marshal credential secret: %w", err)
-	}
-
-	req, err := http.NewRequest(http.MethodPatch, c.baseURL+"/api/user/credential/patch", bytes.NewReader(body))
-	if err != nil {
-		return fmt.Errorf("create request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.httpClient.Do(req)
-
-	if err != nil {
-		return fmt.Errorf("update credential: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusUnauthorized {
-		return fmt.Errorf("not authenticated — please log in again")
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		respBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("update credential failed (%d): %s", resp.StatusCode, string(respBody))
-	}
-	return nil
+	return c.sendJSON(http.MethodPatch, "/api/user/credential/patch", secret)
 }
 
 // StoreCard sends a card secret to the server.
 func (c *Client) StoreCard(secret models.CardSecret) error {
-	body, err := json.Marshal(secret)
-	if err != nil {
-		return fmt.Errorf("marshal card: %w", err)
-	}
-
-	resp, err := c.httpClient.Post(
-		c.baseURL+"/api/user/card/store",
-		"application/json",
-		bytes.NewReader(body),
-	)
-	if err != nil {
-		return fmt.Errorf("store card: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusUnauthorized {
-		return fmt.Errorf("not authenticated — please log in again")
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		respBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("store card failed (%d): %s", resp.StatusCode, string(respBody))
-	}
-	return nil
+	return c.sendJSON(http.MethodPost, "/api/user/card/store", secret)
 }
 
 // GetCard retrieves a card secret by name from the server.
 func (c *Client) GetCard(name string) (*models.CardSecret, error) {
-	resp, err := c.httpClient.Get(c.baseURL + "/api/user/card/get/" + name)
-	if err != nil {
-		return nil, fmt.Errorf("get card: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, fmt.Errorf("not authenticated")
-	}
-	if resp.StatusCode == http.StatusNotFound {
-		return nil, fmt.Errorf("card %q not found", name)
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		respBody, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("get card failed (%d): %s", resp.StatusCode, string(respBody))
-	}
-
-	var secret models.CardSecret
-	if err = json.NewDecoder(resp.Body).Decode(&secret); err != nil {
-		return nil, fmt.Errorf("decode card: %w", err)
-	}
-	return &secret, nil
+	return fetchJSON[models.CardSecret](c, "/api/user/card/get/"+name)
 }
 
 // UpdateCard sends update to a card secret to the server.
 func (c *Client) UpdateCard(secret models.CardSecret) error {
-	body, err := json.Marshal(secret)
-	if err != nil {
-		return fmt.Errorf("marshal card secret: %w", err)
-	}
-
-	req, err := http.NewRequest(http.MethodPatch, c.baseURL+"/api/user/card/patch", bytes.NewReader(body))
-	if err != nil {
-		return fmt.Errorf("create request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.httpClient.Do(req)
-
-	if err != nil {
-		return fmt.Errorf("update card: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusUnauthorized {
-		return fmt.Errorf("not authenticated — please log in again")
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		respBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("update card failed (%d): %s", resp.StatusCode, string(respBody))
-	}
-	return nil
+	return c.sendJSON(http.MethodPatch, "/api/user/card/patch", secret)
 }
 
 // StoreFile sends a file secret to the server.
 func (c *Client) StoreFile(secret models.FileSecret) error {
+	// Специфичная логика (base64 + size check) — остаётся как есть,
+	// но финальный HTTP-вызов делегируется:
 	file, err := os.ReadFile(secret.Path)
 	if err != nil {
 		return fmt.Errorf("cannot read file: %w", err)
 	}
-	var fileReq fileReqResp
-	fileReq.UserFile = base64.StdEncoding.EncodeToString(file)
-	// Exact check on decoded size
-	if len(fileReq.UserFile) > 5<<20 {
+	encoded := base64.StdEncoding.EncodeToString(file)
+	if len(encoded) > 5<<20 {
 		return fmt.Errorf("file exceeds 5MB limit")
 	}
-
-	fileReq.Name = secret.Name
-	fileReq.Description = secret.Description
-
-	body, err := json.Marshal(fileReq)
-	if err != nil {
-		return fmt.Errorf("marshal file secret: %w", err)
-	}
-
-	resp, err := c.httpClient.Post(
-		c.baseURL+"/api/user/file/store",
-		"application/json",
-		bytes.NewReader(body),
-	)
-	if err != nil {
-		return fmt.Errorf("store file: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusUnauthorized {
-		return fmt.Errorf("not authenticated — please log in again")
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		respBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("store file failed (%d): %s", resp.StatusCode, string(respBody))
-	}
-	return nil
+	return c.sendJSON(http.MethodPost, "/api/user/file/store", fileReqResp{
+		Name:        secret.Name,
+		Description: secret.Description,
+		UserFile:    encoded,
+	})
 }
 
 // GetFile retrieves a file secret by name from the server.
@@ -456,116 +200,98 @@ func (c *Client) GetFile(name string) (*models.FileSecret, error) {
 }
 
 // DeleteSecret sends delete secret to the server.
-func (c *Client) DeleteSecret(name string, secretType string) error {
-	var deleteReq deleteRequest
-	deleteReq.Name = name
-	deleteReq.Type = secretType
-
-	body, err := json.Marshal(deleteReq)
-	if err != nil {
-		return fmt.Errorf("marshal secret: %w", err)
-	}
-
-	req, err := http.NewRequest(http.MethodDelete, c.baseURL+"/api/user/secret/delete", bytes.NewReader(body))
-	if err != nil {
-		return fmt.Errorf("create request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.httpClient.Do(req)
-
-	if err != nil {
-		return fmt.Errorf("delete secret: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusUnauthorized {
-		return fmt.Errorf("not authenticated — please log in again")
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		respBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("update text failed (%d): %s", resp.StatusCode, string(respBody))
-	}
-
-	return nil
+func (c *Client) DeleteSecret(name, secretType string) error {
+	return c.sendJSON(http.MethodDelete, "/api/user/secret/delete",
+		deleteRequest{Name: name, Type: secretType})
 }
 
 // ListTexts returns all text secret names from the server.
-func (c *Client) ListTexts() ([]listResponse, error) {
-	resp, err := c.httpClient.Get(c.baseURL + "/api/user/text/list")
-	if err != nil {
-		return nil, fmt.Errorf("list texts: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		respBody, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("list texts failed (%d): %s", resp.StatusCode, string(respBody))
-	}
-
-	var items []listResponse
-	if err := json.NewDecoder(resp.Body).Decode(&items); err != nil {
-		return nil, fmt.Errorf("decode text list: %w", err)
-	}
-	return items, nil
+func (c *Client) ListTexts() (*[]listResponse, error) {
+	return fetchJSON[[]listResponse](c, "/api/user/text/list")
 }
 
 // ListCredentials returns all credential secret names from the server.
-func (c *Client) ListCredentials() ([]listResponse, error) {
-	resp, err := c.httpClient.Get(c.baseURL + "/api/user/credential/list")
-	if err != nil {
-		return nil, fmt.Errorf("list credentials: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		respBody, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("list credentials failed (%d): %s", resp.StatusCode, string(respBody))
-	}
-
-	var items []listResponse
-	if err := json.NewDecoder(resp.Body).Decode(&items); err != nil {
-		return nil, fmt.Errorf("decode credential list: %w", err)
-	}
-	return items, nil
+func (c *Client) ListCredentials() (*[]listResponse, error) {
+	return fetchJSON[[]listResponse](c, "/api/user/credential/list")
 }
 
 // ListCards returns all card secret names from the server.
-func (c *Client) ListCards() ([]listResponse, error) {
-	resp, err := c.httpClient.Get(c.baseURL + "/api/user/card/list")
-	if err != nil {
-		return nil, fmt.Errorf("list cards: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		respBody, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("list cards failed (%d): %s", resp.StatusCode, string(respBody))
-	}
-
-	var items []listResponse
-	if err = json.NewDecoder(resp.Body).Decode(&items); err != nil {
-		return nil, fmt.Errorf("decode card list: %w", err)
-	}
-	return items, nil
+func (c *Client) ListCards() (*[]listResponse, error) {
+	return fetchJSON[[]listResponse](c, "/api/user/card/list")
 }
 
 // ListFiles returns all file secret names from the server.
-func (c *Client) ListFiles() ([]listResponse, error) {
-	resp, err := c.httpClient.Get(c.baseURL + "/api/user/file/list")
+func (c *Client) ListFiles() (*[]listResponse, error) {
+	return fetchJSON[[]listResponse](c, "/api/user/file/list")
+}
+
+// --api helpers--
+
+// sendJSON marshals payload, executes method+path, checks status.
+func (c *Client) sendJSON(method, path string, payload any) error {
+	var bodyReader io.Reader
+	if payload != nil {
+		b, err := json.Marshal(payload)
+		if err != nil {
+			return fmt.Errorf("marshal %s: %w", path, err)
+		}
+		bodyReader = bytes.NewReader(b)
+	}
+
+	req, err := http.NewRequest(method, c.baseURL+path, bodyReader)
 	if err != nil {
-		return nil, fmt.Errorf("list file: %w", err)
+		return fmt.Errorf("build request %s: %w", path, err)
+	}
+	if payload != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("%s %s: %w", method, path, err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		respBody, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("list files failed (%d): %s", resp.StatusCode, string(respBody))
+	return checkStatus(resp)
+}
+
+// fetchJSON executes a GET, checks status, and decodes the JSON body into T.
+func fetchJSON[T any](c *Client, path string) (*T, error) {
+	resp, err := c.httpClient.Get(c.baseURL + path)
+	if err != nil {
+		return nil, fmt.Errorf("GET %s: %w", path, err)
+	}
+	defer resp.Body.Close()
+
+	if err = checkStatus(resp); err != nil {
+		return nil, err
 	}
 
-	var items []listResponse
-	if err = json.NewDecoder(resp.Body).Decode(&items); err != nil {
-		return nil, fmt.Errorf("decode file list: %w", err)
+	var out T
+	if err = json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return nil, fmt.Errorf("decode %s: %w", path, err)
 	}
-	return items, nil
+	return &out, nil
+}
+
+// checkStatus maps HTTP status codes to sentinel errors.
+func checkStatus(resp *http.Response) error {
+	switch {
+	case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
+		return fmt.Errorf("not authenticated — please log in again")
+	case resp.StatusCode == http.StatusNotFound:
+		return fmt.Errorf("resource not found") // callers могут обернуть
+	case resp.StatusCode == http.StatusConflict:
+		return fmt.Errorf("conflict: resource already exists")
+	case resp.StatusCode >= 200 && resp.StatusCode < 300:
+		return nil
+	default:
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("unexpected status %d: %s", resp.StatusCode, body)
+	}
+}
+
+// doAuth is a helper that handles common authentication flow for register and login.
+func (c *Client) doAuth(path, login, password string) error {
+	return c.sendJSON(http.MethodPost, path, authRequest{Login: login, Password: password})
 }
